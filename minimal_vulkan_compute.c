@@ -79,10 +79,14 @@ int main(int argc, char* argv[])
 	}
 
 	int selnr = -1;
-	if (num_dgpu)
+	const char* prefer_dgpu = getenv("MVK_PREFER_DGPU");
+	const char* prefer_igpu = getenv("MVK_PREFER_IGPU");
+	const int skip_dgpu = num_igpu && prefer_igpu;
+	const int skip_igpu = num_dgpu && prefer_dgpu;
+	if (num_dgpu && !skip_dgpu)
 		for (int i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { selnr=i; break; }
-	if (num_igpu && selnr<0)
+	if (num_igpu && !skip_igpu && selnr<0)
 		for (int i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) { selnr=i; break; }
 	if (selnr<0)
