@@ -155,8 +155,8 @@ int main(int argc, char* argv[])
 		fprintf
 		(
 			stderr,
-			"%zu bytes of %s memory [ %s%s%s%s]\n",
-			sz,
+			"%zu MiB of %s memory [ %s%s%s%s]\n",
+			sz / (1024*1024),
 			mhf & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT ? "local" : "non-local",
 			fl & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ? "device-local " : "",
 			fl & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ? "host-visible " : "",
