@@ -40,6 +40,22 @@ Shows how to setup vulkan to compute something on the GPU.
 15908 MiB of non-local memory [ host-visible host-coherent host-cached ]
 ```
 
+## Using AMD Radeon Graphics (RADV RENOIR)
+```
+11 mem types. 2 mem heaps.
+10819 MiB of local memory [ device-local ]
+10819 MiB of local memory [ device-local ]
+5409 MiB of non-local memory [ host-visible host-coherent ]
+10819 MiB of local memory [ device-local host-visible host-coherent ]
+10819 MiB of local memory [ device-local host-visible host-coherent ]
+5409 MiB of non-local memory [ host-visible host-coherent host-cached ]
+5409 MiB of non-local memory [ host-visible host-coherent host-cached ]
+10819 MiB of local memory [ device-local ]
+5409 MiB of non-local memory [ host-visible host-coherent ]
+10819 MiB of local memory [ device-local host-visible host-coherent ]
+5409 MiB of non-local memory [ host-visible host-coherent host-cached ]
+```
+
 ## Using Intel(R) Xe Graphics (TGL GT2)
 ```
 1 mem types. 1 mem heaps.
