@@ -68,12 +68,14 @@ int main(int argc, char* argv[])
 	};
 	int num_igpu = 0;
 	int num_dgpu = 0;
+	int num_cpu  = 0;
 	for (int dnr=0; dnr<dev_count; ++dnr)
 	{
 		VkPhysicalDevice* device = devices + dnr;
 		vkGetPhysicalDeviceProperties(devices[dnr], devprops+dnr);
 		num_igpu += (devprops[dnr].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
 		num_dgpu += (devprops[dnr].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
+		num_cpu  += (devprops[dnr].deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU);
 		const char* tnam = devtypenames[devprops[dnr].deviceType];
 		fprintf(stderr,"%04x:%04x %s %s\n", devprops[dnr].vendorID, devprops[dnr].deviceID, tnam, devprops[dnr].deviceName);
 	}
@@ -81,16 +83,22 @@ int main(int argc, char* argv[])
 	int selnr = -1;
 	const char* prefer_dgpu = getenv("MVK_PREFER_DGPU");
 	const char* prefer_igpu = getenv("MVK_PREFER_IGPU");
-	const int skip_dgpu = num_igpu && prefer_igpu;
-	const int skip_igpu = num_dgpu && prefer_dgpu;
+	const char* prefer_cpu  = getenv("MVK_PREFER_CPU");
+	const int skip_dgpu = (num_igpu && prefer_igpu) || (num_cpu  && prefer_cpu );
+	const int skip_igpu = (num_dgpu && prefer_dgpu) || (num_cpu  && prefer_cpu );
+	const int skip_cpu  = (num_igpu && prefer_igpu) || (num_dgpu && prefer_dgpu);
 	if (num_dgpu && !skip_dgpu)
 		for (int i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { selnr=i; break; }
 	if (num_igpu && !skip_igpu && selnr<0)
 		for (int i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) { selnr=i; break; }
+	if (num_cpu && !skip_cpu && selnr<0)
+		for (int i=0; i<dev_count; ++i)
+			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) { selnr=i; break; }
 	if (selnr<0)
 		selnr = 0;
+	fprintf(stderr, "Using %s\n", devprops[selnr].deviceName);
 	pdev = devices[selnr];
 
 	// Find queue fam.
