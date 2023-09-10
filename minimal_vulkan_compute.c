@@ -1,7 +1,7 @@
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include <stdio.h>	// for fprintf()
+#include <stdlib.h>	// for getenv()
+#include <assert.h>	// for assert()
+#include <string.h>	// for memset()
 
 #include <vulkan/vulkan.h>
 
@@ -164,6 +164,122 @@ int main(int argc, char* argv[])
 			fl & VK_MEMORY_PROPERTY_HOST_CACHED_BIT ? "host-cached " : ""
 		);
 	}
+
+	// Create a buffer for constant data
+	const VkBufferCreateFlags createFlags = 0;
+	const VkBufferUsageFlags  usageFlags  = 
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	const VkDeviceSize bufsz = 50*1024;
+	const VkBufferCreateInfo bci =
+	{
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		0,					// pNext
+		createFlags,
+		bufsz,
+		usageFlags,
+		VK_SHARING_MODE_EXCLUSIVE,
+		0,					// queue family index count
+		0					// queue family indices
+	};
+	VkBuffer buff;
+	const VkResult res_crbuf = vkCreateBuffer
+	(
+		devi,
+		&bci,
+		0,
+		&buff
+	);
+	CHECK_VK(res_crbuf);
+	// Check mem requirements for it
+	VkMemoryRequirements memreqs;
+	vkGetBufferMemoryRequirements(devi, buff, &memreqs);
+	fprintf
+	(
+		stderr,
+		"reqs: size=%lu align=%lu memtp=0x%x\n",
+		memreqs.size, memreqs.alignment, memreqs.memoryTypeBits
+	);
+
+	// Pick a buffer for the constant data
+	const VkMemoryPropertyFlags req =
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	int tp = -1;
+	for (int mt=0; mt<mtcnt; ++mt)
+		if ((memprops.memoryTypes[mt].propertyFlags & req) == req) { tp = mt; break; }
+	if (tp<0)
+	{
+		fprintf(stderr, "Cannot find a memory type that is both device-local and host-visible.\n");
+		assert(tp>=0);
+	}
+	fprintf(stderr, "Using memory type index %d\n", tp);
+
+	// TODO: test against mem reqs.
+
+	// Allocate the memory
+	const VkMemoryAllocateInfo mai =
+	{
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		0,
+		memreqs.size,
+		tp
+	};
+	VkDeviceMemory devmem;
+	const VkResult resalloc = vkAllocateMemory
+	(
+		devi,
+		&mai,
+		0,
+		&devmem
+	);
+	CHECK_VK(resalloc);
+
+	// Map the memory
+	void* data = 0;
+	const VkResult resmap = vkMapMemory
+	(
+		devi,
+		devmem,
+		0,
+		memreqs.size,
+		0,
+		(void**) &data
+	);
+	CHECK_VK(resmap);
+
+	// Write the data
+	memset(data, 0x55, memreqs.size);
+
+	// Flush it
+	const VkMappedMemoryRange rng =
+	{
+		VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+		0,
+		devmem,
+		0,			// offset
+		memreqs.size
+	};
+	const VkResult resflush = vkFlushMappedMemoryRanges
+	(
+		devi,
+		1,
+		&rng
+	);
+	CHECK_VK(resflush);
+
+	// Unmap it
+	vkUnmapMemory(devi, devmem);
+
+	// Bind it
+	const VkDeviceSize offset = 0;
+	const VkResult resbind = vkBindBufferMemory
+	(
+		devi,
+		buff,
+		devmem,
+		offset
+	);
+	CHECK_VK(resbind);
 
 	return 0;
 }
