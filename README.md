@@ -19,14 +19,17 @@ Shows how to setup vulkan to compute something on the GPU.
 ## Memory Types
 
 # Using NVIDIA GeForce RTX 3070
+```
 5 mem types. 3 mem heaps.
 23890 MiB of non-local memory [ ]
 8192 MiB of local memory [ device-local ]
 23890 MiB of non-local memory [ host-visible host-coherent ]
 23890 MiB of non-local memory [ host-visible host-coherent host-cached ]
 246 MiB of local memory [ device-local host-visible host-coherent ]
+```
 
 # Using AMD Radeon RX 580 Series (RADV POLARIS10)
+```
 7 mem types. 2 mem heaps.
 4096 MiB of local memory [ device-local ]
 4096 MiB of local memory [ device-local ]
@@ -35,7 +38,13 @@ Shows how to setup vulkan to compute something on the GPU.
 4096 MiB of local memory [ device-local host-visible host-coherent ]
 15908 MiB of non-local memory [ host-visible host-coherent host-cached ]
 15908 MiB of non-local memory [ host-visible host-coherent host-cached ]
+```
 
+# Using Intel(R) Xe Graphics (TGL GT2)
+```
+1 mem types. 1 mem heaps.
+11759 MiB of local memory [ device-local host-visible host-coherent host-cached ]
+```
 
 ## Author
 
