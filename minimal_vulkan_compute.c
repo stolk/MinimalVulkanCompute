@@ -19,6 +19,8 @@ static VkDevice devi;
 
 int main(int argc, char* argv[])
 {
+	(void) argc;
+	(void) argv;
 	// Get an instance
 	const VkApplicationInfo ai =
 	{
@@ -69,7 +71,7 @@ int main(int argc, char* argv[])
 	int num_igpu = 0;
 	int num_dgpu = 0;
 	int num_cpu  = 0;
-	for (int dnr=0; dnr<dev_count; ++dnr)
+	for (uint32_t dnr=0; dnr<dev_count; ++dnr)
 	{
 		VkPhysicalDevice* device = devices + dnr;
 		vkGetPhysicalDeviceProperties(devices[dnr], devprops+dnr);
@@ -88,13 +90,13 @@ int main(int argc, char* argv[])
 	const int skip_igpu = (num_dgpu && prefer_dgpu) || (num_cpu  && prefer_cpu );
 	const int skip_cpu  = (num_igpu && prefer_igpu) || (num_dgpu && prefer_dgpu);
 	if (num_dgpu && !skip_dgpu)
-		for (int i=0; i<dev_count; ++i)
+		for (uint32_t i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) { selnr=i; break; }
 	if (num_igpu && !skip_igpu && selnr<0)
-		for (int i=0; i<dev_count; ++i)
+		for (uint32_t i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) { selnr=i; break; }
 	if (num_cpu && !skip_cpu && selnr<0)
-		for (int i=0; i<dev_count; ++i)
+		for (uint32_t i=0; i<dev_count; ++i)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) { selnr=i; break; }
 	if (selnr<0)
 		selnr = 0;
@@ -106,7 +108,7 @@ int main(int argc, char* argv[])
 	VkQueueFamilyProperties famprops[fam_count];
 	vkGetPhysicalDeviceQueueFamilyProperties(pdev, &fam_count, famprops);
 	int fam = -1;
-	for (int fa=0; fa<fam_count; ++fa)
+	for (uint32_t fa=0; fa<fam_count; ++fa)
 		if (famprops[fa].queueFlags & VK_QUEUE_COMPUTE_BIT )
 			if (famprops[fa].queueFlags & VK_QUEUE_TRANSFER_BIT)
 			{
@@ -154,7 +156,7 @@ int main(int argc, char* argv[])
 	const uint32_t mtcnt = memprops.memoryTypeCount;
 	const uint32_t mhcnt = memprops.memoryHeapCount;
 	fprintf(stderr, "%d mem types. %d mem heaps.\n", mtcnt, mhcnt);
-	for (int mt=0; mt<mtcnt; ++mt)
+	for (uint32_t mt=0; mt<mtcnt; ++mt)
 	{
 		const uint32_t hidx = memprops.memoryTypes[mt].heapIndex;
 		const VkMemoryPropertyFlags fl = memprops.memoryTypes[mt].propertyFlags;
@@ -213,7 +215,7 @@ int main(int argc, char* argv[])
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	int tp = -1;
-	for (int mt=0; mt<mtcnt; ++mt)
+	for (uint32_t mt=0; mt<mtcnt; ++mt)
 		if ((memprops.memoryTypes[mt].propertyFlags & req) == req) { tp = mt; break; }
 	if (tp<0)
 	{
