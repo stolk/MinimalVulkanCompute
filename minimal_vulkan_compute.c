@@ -8,7 +8,7 @@
 #define CHECK_VK(RES) \
 	if (RES != VK_SUCCESS) \
 	{ \
-		fprintf(stderr, "VK FAIL at %s:%d\n", __FILE__, __LINE__); \
+		fprintf(stderr, "VK FAIL (%d) at %s:%d\n", RES, __FILE__, __LINE__); \
 		assert(RES == VK_SUCCESS); \
 	}
 
@@ -96,6 +96,209 @@ void mk_buffer
 	CHECK_VK(resalloc);
 }
 
+#pragma mark Shader module
+
+#define MAXSHADERSZ 4096
+static uint32_t shader[MAXSHADERSZ];
+
+static VkShaderModule mk_shader(const char* spirv_fname)
+{
+	FILE* f = fopen(spirv_fname, "rb");
+	if (!f)
+		fprintf(stderr,"Failed to open %s for reading.\n", spirv_fname);
+	assert(f);
+	const uint16_t shader_sz = (uint16_t) fread(shader, sizeof(uint32_t), MAXSHADERSZ, f);
+	assert(shader_sz);
+
+	// Create the shader module
+	VkShaderModuleCreateInfo smci =
+	{
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		0,
+		0,
+		shader_sz,
+		shader
+	};
+	VkShaderModule shader_module;
+	const VkResult rescsm = vkCreateShaderModule(devi, &smci, 0, &shader_module);
+	CHECK_VK(rescsm);
+	return shader_module;
+}
+
+
+static VkShaderModule mk_shader2(void)
+{
+    const int32_t bufferLength = 16384;
+    enum {
+      RESERVED_ID = 0,
+      FUNC_ID,
+      IN_ID,
+      OUT_ID,
+      GLOBAL_INVOCATION_ID,
+      VOID_TYPE_ID,
+      FUNC_TYPE_ID,
+      INT_TYPE_ID,
+      INT_ARRAY_TYPE_ID,
+      STRUCT_ID,
+      POINTER_TYPE_ID,
+      ELEMENT_POINTER_TYPE_ID,
+      INT_VECTOR_TYPE_ID,
+      INT_VECTOR_POINTER_TYPE_ID,
+      INT_POINTER_TYPE_ID,
+      CONSTANT_ZERO_ID,
+      CONSTANT_ARRAY_LENGTH_ID,
+      LABEL_ID,
+      IN_ELEMENT_ID,
+      OUT_ELEMENT_ID,
+      GLOBAL_INVOCATION_X_ID,
+      GLOBAL_INVOCATION_X_PTR_ID,
+      TEMP_LOADED_ID,
+      BOUND
+    };
+
+    enum {
+      INPUT = 1,
+      UNIFORM = 2,
+      BUFFER_BLOCK = 3,
+      ARRAY_STRIDE = 6,
+      BUILTIN = 11,
+      BINDING = 33,
+      OFFSET = 35,
+      DESCRIPTOR_SET = 34,
+      GLOBAL_INVOCATION = 28,
+      OP_TYPE_VOID = 19,
+      OP_TYPE_FUNCTION = 33,
+      OP_TYPE_INT = 21,
+      OP_TYPE_VECTOR = 23,
+      OP_TYPE_ARRAY = 28,
+      OP_TYPE_STRUCT = 30,
+      OP_TYPE_POINTER = 32,
+      OP_VARIABLE = 59,
+      OP_DECORATE = 71,
+      OP_MEMBER_DECORATE = 72,
+      OP_FUNCTION = 54,
+      OP_LABEL = 248,
+      OP_ACCESS_CHAIN = 65,
+      OP_CONSTANT = 43,
+      OP_LOAD = 61,
+      OP_STORE = 62,
+      OP_RETURN = 253,
+      OP_FUNCTION_END = 56,
+      OP_CAPABILITY = 17,
+      OP_MEMORY_MODEL = 14,
+      OP_ENTRY_POINT = 15,
+      OP_EXECUTION_MODE = 16,
+      OP_COMPOSITE_EXTRACT = 81,
+    };
+
+    int32_t shader[] = {
+      // first is the SPIR-V header
+      0x07230203, // magic header ID
+      0x00010000, // version 1.0.0
+      0,          // generator (optional)
+      BOUND,      // bound
+      0,          // schema
+
+      // OpCapability Shader
+      (2 << 16) | OP_CAPABILITY, 1, 
+
+      // OpMemoryModel Logical Simple
+      (3 << 16) | OP_MEMORY_MODEL, 0, 0, 
+
+      // OpEntryPoint GLCompute %FUNC_ID "f" %IN_ID %OUT_ID
+      (4 << 16) | OP_ENTRY_POINT, 5, FUNC_ID, 0x00000066,
+
+      // OpExecutionMode %FUNC_ID LocalSize 1 1 1
+      (6 << 16) | OP_EXECUTION_MODE, FUNC_ID, 17, 1, 1, 1,
+
+      // next declare decorations
+
+      (3 << 16) | OP_DECORATE, STRUCT_ID, BUFFER_BLOCK, 
+
+      (4 << 16) | OP_DECORATE, GLOBAL_INVOCATION_ID, BUILTIN, GLOBAL_INVOCATION,
+
+      (4 << 16) | OP_DECORATE, IN_ID, DESCRIPTOR_SET, 0,
+
+      (4 << 16) | OP_DECORATE, IN_ID, BINDING, 0,
+
+      (4 << 16) | OP_DECORATE, OUT_ID, DESCRIPTOR_SET, 0,
+
+      (4 << 16) | OP_DECORATE, OUT_ID, BINDING, 1,
+
+      (4 << 16) | OP_DECORATE, INT_ARRAY_TYPE_ID, ARRAY_STRIDE, 4,
+
+      (5 << 16) | OP_MEMBER_DECORATE, STRUCT_ID, 0, OFFSET, 0,
+
+      // next declare types
+      (2 << 16) | OP_TYPE_VOID, VOID_TYPE_ID,
+
+      (3 << 16) | OP_TYPE_FUNCTION, FUNC_TYPE_ID, VOID_TYPE_ID,
+
+      (4 << 16) | OP_TYPE_INT, INT_TYPE_ID, 32, 1,
+
+      (4 << 16) | OP_CONSTANT, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID, bufferLength,
+
+      (4 << 16) | OP_TYPE_ARRAY, INT_ARRAY_TYPE_ID, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID,
+
+      (3 << 16) | OP_TYPE_STRUCT, STRUCT_ID, INT_ARRAY_TYPE_ID,
+
+      (4 << 16) | OP_TYPE_POINTER, POINTER_TYPE_ID, UNIFORM, STRUCT_ID,
+
+      (4 << 16) | OP_TYPE_POINTER, ELEMENT_POINTER_TYPE_ID, UNIFORM, INT_TYPE_ID,
+
+      (4 << 16) | OP_TYPE_VECTOR, INT_VECTOR_TYPE_ID, INT_TYPE_ID, 3,
+
+      (4 << 16) | OP_TYPE_POINTER, INT_VECTOR_POINTER_TYPE_ID, INPUT, INT_VECTOR_TYPE_ID,
+
+      (4 << 16) | OP_TYPE_POINTER, INT_POINTER_TYPE_ID, INPUT, INT_TYPE_ID,
+
+      // then declare constants
+      (4 << 16) | OP_CONSTANT, INT_TYPE_ID, CONSTANT_ZERO_ID, 0,
+
+      // then declare variables
+      (4 << 16) | OP_VARIABLE, POINTER_TYPE_ID, IN_ID, UNIFORM,
+
+      (4 << 16) | OP_VARIABLE, POINTER_TYPE_ID, OUT_ID, UNIFORM,
+
+      (4 << 16) | OP_VARIABLE, INT_VECTOR_POINTER_TYPE_ID, GLOBAL_INVOCATION_ID, INPUT,
+
+      // then declare function
+      (5 << 16) | OP_FUNCTION, VOID_TYPE_ID, FUNC_ID, 0, FUNC_TYPE_ID,
+
+      (2 << 16) | OP_LABEL, LABEL_ID,
+
+      (5 << 16) | OP_ACCESS_CHAIN, INT_POINTER_TYPE_ID, GLOBAL_INVOCATION_X_PTR_ID, GLOBAL_INVOCATION_ID, CONSTANT_ZERO_ID,
+
+      (4 << 16) | OP_LOAD, INT_TYPE_ID, GLOBAL_INVOCATION_X_ID, GLOBAL_INVOCATION_X_PTR_ID,
+
+      (6 << 16) | OP_ACCESS_CHAIN, ELEMENT_POINTER_TYPE_ID, IN_ELEMENT_ID, IN_ID, CONSTANT_ZERO_ID, GLOBAL_INVOCATION_X_ID,
+
+      (4 << 16) | OP_LOAD, INT_TYPE_ID, TEMP_LOADED_ID, IN_ELEMENT_ID,
+
+      (6 << 16) | OP_ACCESS_CHAIN, ELEMENT_POINTER_TYPE_ID, OUT_ELEMENT_ID, OUT_ID, CONSTANT_ZERO_ID, GLOBAL_INVOCATION_X_ID,
+
+      (3 << 16) | OP_STORE, OUT_ELEMENT_ID, TEMP_LOADED_ID,
+
+      (1 << 16) | OP_RETURN,
+
+      (1 << 16) | OP_FUNCTION_END,
+    };
+
+    VkShaderModuleCreateInfo shaderModuleCreateInfo = {
+      VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      0,
+      0,
+      sizeof(shader),
+      shader
+    };
+
+    VkShaderModule shader_module;
+
+    const VkResult res = vkCreateShaderModule(devi, &shaderModuleCreateInfo, 0, &shader_module);
+    CHECK_VK(res);
+
+    return shader_module;
+}
 
 #pragma mark Main
 
@@ -257,45 +460,63 @@ int main(int argc, char* argv[])
 	}
 
 	// Create a buffer for constant data
-	const VkBufferUsageFlags  usageFlags  = 
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	const VkMemoryPropertyFlags propFlags =
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	const VkDeviceSize bufsz = 50*1024;
-	VkBuffer buff;
-	VkDeviceMemory devmem;
+	VkBuffer bufsrc;
+	VkDeviceMemory memsrc;
 	mk_buffer
 	(
-		usageFlags,
-		propFlags,
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		bufsz,
-		&buff,
-		&devmem
+		&bufsrc,
+		&memsrc
+	);
+	// Create a buffer for dest data
+	VkBuffer bufdst;
+	VkDeviceMemory memdst;
+	mk_buffer
+	(
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		bufsz,
+		&bufdst,
+		&memdst
 	);
 
-	// Map the memory
-	void* data = 0;
-	const VkResult resmap = vkMapMemory
+	// Map the src memory
+	void* datasrc = 0;
+	const VkResult resmap0 = vkMapMemory
 	(
 		devi,
-		devmem,
+		memsrc,
 		0,
 		bufsz,
 		0,
-		(void**) &data
+		(void**) &datasrc
 	);
-	CHECK_VK(resmap);
+	CHECK_VK(resmap0);
+	// Map the dst memory
+	void* datadst = 0;
+	const VkResult resmap1 = vkMapMemory
+	(
+		devi,
+		memdst,
+		0,
+		bufsz,
+		0,
+		(void**) &datadst
+	);
+	CHECK_VK(resmap1);
 
 	// Write the data
-	memset(data, 0x55, bufsz);
+	memset(datasrc, 0x55, bufsz);
 
 	// Flush it
 	const VkMappedMemoryRange rng =
 	{
 		VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
 		0,
-		devmem,
+		memsrc,
 		0,			// offset
 		bufsz
 	};
@@ -308,18 +529,107 @@ int main(int argc, char* argv[])
 	CHECK_VK(resflush);
 
 	// Unmap it
-	vkUnmapMemory(devi, devmem);
+	vkUnmapMemory(devi, memsrc);
 
-	// Bind it
+	// Bind src buf
 	const VkDeviceSize offset = 0;
-	const VkResult resbind = vkBindBufferMemory
+	const VkResult resbind0 = vkBindBufferMemory
 	(
 		devi,
-		buff,
-		devmem,
+		bufsrc,
+		memsrc,
 		offset
 	);
-	CHECK_VK(resbind);
+	CHECK_VK(resbind0);
+	// Bind dst buf
+	const VkResult resbind1 = vkBindBufferMemory
+	(
+		devi,
+		bufdst,
+		memdst,
+		offset
+	);
+	CHECK_VK(resbind1);
+
+	// Make a shader module
+	//VkShaderModule shader_module = mk_shader("foo.spirv");
+	VkShaderModule shader_module = mk_shader2();
+
+	// Make a descriptor set
+	const VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2] = 
+	{
+		{
+			0,					// binding number
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	// descriptor type
+			1,					// descriptor count
+			VK_SHADER_STAGE_COMPUTE_BIT,		// stage flags
+			0					// immutable samplers
+		},
+		{
+			1,					// binding number
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,	// descriptor type
+			1,					// descriptor count
+			VK_SHADER_STAGE_COMPUTE_BIT,		// stage flags
+			0					// immutable samplers
+		}
+	};
+	VkDescriptorSetLayout  descriptorSetLayout;
+	const VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo =
+	{
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		0,				// next
+		0,				// flags
+		2,				// bindingCount
+		descriptorSetLayoutBindings	// bindings
+	};
+	const VkResult rescdsl = vkCreateDescriptorSetLayout(devi, &descriptorSetLayoutCreateInfo, 0, &descriptorSetLayout);
+	CHECK_VK(rescdsl);
+
+	// Create pipeline
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo =
+	{
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		0,				// next
+		0,				// flags
+		1,				// layout count
+		&descriptorSetLayout,		// layouts
+		0,				// pushConstantRangeCount
+		0				// pushConstantRanges
+	};
+	VkPipelineLayout pipelineLayout;
+	const VkResult rescpl = vkCreatePipelineLayout(devi, &pipelineLayoutCreateInfo, 0, &pipelineLayout);
+	CHECK_VK(rescpl);
+	const VkPipelineShaderStageCreateInfo pssci =
+	{
+		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		0,				// next
+		0,				// flags
+		VK_SHADER_STAGE_COMPUTE_BIT,	// stage
+		shader_module,			// module
+		"foo",				// name of entry point
+		0				// specialization info
+	};
+	VkComputePipelineCreateInfo computePipelineCreateInfo =
+	{
+		VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		0,				// next
+		0,				// flags
+		pssci,				// pipeline shader stage create info
+		pipelineLayout,			// layout
+		0,				// basePipelineHandle
+		0				// basePipelineIndex
+	};
+	VkPipeline pipeline;
+	const VkResult resccp = vkCreateComputePipelines
+	(
+		devi,
+		0,				// pipeline cache
+		1,				// create info count
+		&computePipelineCreateInfo,
+		0,				// allocator
+		&pipeline
+	);
+	CHECK_VK(resccp);
 
 	return 0;
 }
