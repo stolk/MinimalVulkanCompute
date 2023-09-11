@@ -13,9 +13,91 @@
 	}
 
 
-static VkInstance inst;
-static VkPhysicalDevice pdev;
-static VkDevice devi;
+static VkInstance inst;					// A Vulkan instance.
+static VkPhysicalDevice pdev;				// A physical device.
+static VkDevice devi;					// A device.
+
+static uint32_t mtcnt;					// Memory type count
+static uint32_t mhcnt;					// Memory heap count
+static VkPhysicalDeviceMemoryProperties memprops;	// Properties for all memory types
+
+#pragma mark Buffer creation
+
+// Create a buffer for specified usage, and with specified properties.
+void mk_buffer
+(
+	VkBufferUsageFlags usageFlags,			// How to use buffer?
+	VkMemoryPropertyFlags propFlags,		// Local? Host Visible? Cached? etc.
+	VkDeviceSize sz,				// Size of the buffer.
+	VkBuffer* buff,					// Out: buffer
+	VkDeviceMemory* devmem				// Out: memory
+)
+{
+	// Create the buffer.
+	const VkBufferCreateFlags createFlags = 0;
+	const VkBufferCreateInfo bci =
+	{
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		0,					// pNext
+		createFlags,
+		sz,
+		usageFlags,
+		VK_SHARING_MODE_EXCLUSIVE,		// only one queue will use it.
+		0,					// queue family index count.
+		0					// queue family indices.
+	};
+	const VkResult res_crbuf = vkCreateBuffer
+	(
+		devi,
+		&bci,
+		0,
+		buff
+	);
+	CHECK_VK(res_crbuf);
+
+	// Check mem requirements for it.
+	VkMemoryRequirements memreqs;
+	vkGetBufferMemoryRequirements(devi, *buff, &memreqs);
+	fprintf
+	(
+		stderr,
+		"reqs: size=%lu align=%lu memtp=0x%x\n",
+		memreqs.size, memreqs.alignment, memreqs.memoryTypeBits
+	);
+
+	// Pick a buffer matching the props
+	int tp = -1;
+	for (uint32_t mt=0; mt<mtcnt; ++mt)
+		if ((memprops.memoryTypes[mt].propertyFlags & propFlags) == propFlags) { tp = mt; break; }
+	if (tp<0)
+	{
+		fprintf(stderr, "Cannot find a memory type that is both device-local and host-visible.\n");
+		assert(tp>=0);
+	}
+	fprintf(stderr, "Using memory type index %d\n", tp);
+
+	// TODO: test against mem reqs.
+
+	// Allocate the memory
+	const VkMemoryAllocateInfo mai =
+	{
+		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		0,
+		memreqs.size,
+		tp
+	};
+	const VkResult resalloc = vkAllocateMemory
+	(
+		devi,
+		&mai,
+		0,
+		devmem
+	);
+	CHECK_VK(resalloc);
+}
+
+
+#pragma mark Main
 
 int main(int argc, char* argv[])
 {
@@ -151,10 +233,9 @@ int main(int argc, char* argv[])
 	CHECK_VK(res_cd);
 
 	// Examine the memory types.
-	VkPhysicalDeviceMemoryProperties memprops;
 	vkGetPhysicalDeviceMemoryProperties(pdev, &memprops);
-	const uint32_t mtcnt = memprops.memoryTypeCount;
-	const uint32_t mhcnt = memprops.memoryHeapCount;
+	mtcnt = memprops.memoryTypeCount;
+	mhcnt = memprops.memoryHeapCount;
 	fprintf(stderr, "%d mem types. %d mem heaps.\n", mtcnt, mhcnt);
 	for (uint32_t mt=0; mt<mtcnt; ++mt)
 	{
@@ -176,73 +257,22 @@ int main(int argc, char* argv[])
 	}
 
 	// Create a buffer for constant data
-	const VkBufferCreateFlags createFlags = 0;
 	const VkBufferUsageFlags  usageFlags  = 
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	const VkDeviceSize bufsz = 50*1024;
-	const VkBufferCreateInfo bci =
-	{
-		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		0,					// pNext
-		createFlags,
-		bufsz,
-		usageFlags,
-		VK_SHARING_MODE_EXCLUSIVE,
-		0,					// queue family index count
-		0					// queue family indices
-	};
-	VkBuffer buff;
-	const VkResult res_crbuf = vkCreateBuffer
-	(
-		devi,
-		&bci,
-		0,
-		&buff
-	);
-	CHECK_VK(res_crbuf);
-	// Check mem requirements for it
-	VkMemoryRequirements memreqs;
-	vkGetBufferMemoryRequirements(devi, buff, &memreqs);
-	fprintf
-	(
-		stderr,
-		"reqs: size=%lu align=%lu memtp=0x%x\n",
-		memreqs.size, memreqs.alignment, memreqs.memoryTypeBits
-	);
-
-	// Pick a buffer for the constant data
-	const VkMemoryPropertyFlags req =
+	const VkMemoryPropertyFlags propFlags =
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	int tp = -1;
-	for (uint32_t mt=0; mt<mtcnt; ++mt)
-		if ((memprops.memoryTypes[mt].propertyFlags & req) == req) { tp = mt; break; }
-	if (tp<0)
-	{
-		fprintf(stderr, "Cannot find a memory type that is both device-local and host-visible.\n");
-		assert(tp>=0);
-	}
-	fprintf(stderr, "Using memory type index %d\n", tp);
-
-	// TODO: test against mem reqs.
-
-	// Allocate the memory
-	const VkMemoryAllocateInfo mai =
-	{
-		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-		0,
-		memreqs.size,
-		tp
-	};
+	const VkDeviceSize bufsz = 50*1024;
+	VkBuffer buff;
 	VkDeviceMemory devmem;
-	const VkResult resalloc = vkAllocateMemory
+	mk_buffer
 	(
-		devi,
-		&mai,
-		0,
+		usageFlags,
+		propFlags,
+		bufsz,
+		&buff,
 		&devmem
 	);
-	CHECK_VK(resalloc);
 
 	// Map the memory
 	void* data = 0;
@@ -251,14 +281,14 @@ int main(int argc, char* argv[])
 		devi,
 		devmem,
 		0,
-		memreqs.size,
+		bufsz,
 		0,
 		(void**) &data
 	);
 	CHECK_VK(resmap);
 
 	// Write the data
-	memset(data, 0x55, memreqs.size);
+	memset(data, 0x55, bufsz);
 
 	// Flush it
 	const VkMappedMemoryRange rng =
@@ -267,7 +297,7 @@ int main(int argc, char* argv[])
 		0,
 		devmem,
 		0,			// offset
-		memreqs.size
+		bufsz
 	};
 	const VkResult resflush = vkFlushMappedMemoryRanges
 	(
