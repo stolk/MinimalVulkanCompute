@@ -9,6 +9,7 @@ Shows how to setup vulkan to compute something on the GPU.
 # Dependencies
 
  * libvulkan-dev
+ * vulkan-validationlayers
 
 # Environment Variables
 
