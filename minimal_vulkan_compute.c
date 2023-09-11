@@ -86,14 +86,14 @@ void mk_buffer
 		memreqs.size,
 		tp
 	};
-	const VkResult resalloc = vkAllocateMemory
+	const VkResult res_alloc = vkAllocateMemory
 	(
 		devi,
 		&mai,
 		0,
 		devmem
 	);
-	CHECK_VK(resalloc);
+	CHECK_VK(res_alloc);
 }
 
 #pragma mark Shader module
@@ -120,184 +120,9 @@ static VkShaderModule mk_shader(const char* spirv_fname)
 		shader
 	};
 	VkShaderModule shader_module;
-	const VkResult rescsm = vkCreateShaderModule(devi, &smci, 0, &shader_module);
-	CHECK_VK(rescsm);
+	const VkResult res_csm = vkCreateShaderModule(devi, &smci, 0, &shader_module);
+	CHECK_VK(res_csm);
 	return shader_module;
-}
-
-
-static VkShaderModule mk_shader2(void)
-{
-    const int32_t bufferLength = 16384;
-    enum {
-      RESERVED_ID = 0,
-      FUNC_ID,
-      IN_ID,
-      OUT_ID,
-      GLOBAL_INVOCATION_ID,
-      VOID_TYPE_ID,
-      FUNC_TYPE_ID,
-      INT_TYPE_ID,
-      INT_ARRAY_TYPE_ID,
-      STRUCT_ID,
-      POINTER_TYPE_ID,
-      ELEMENT_POINTER_TYPE_ID,
-      INT_VECTOR_TYPE_ID,
-      INT_VECTOR_POINTER_TYPE_ID,
-      INT_POINTER_TYPE_ID,
-      CONSTANT_ZERO_ID,
-      CONSTANT_ARRAY_LENGTH_ID,
-      LABEL_ID,
-      IN_ELEMENT_ID,
-      OUT_ELEMENT_ID,
-      GLOBAL_INVOCATION_X_ID,
-      GLOBAL_INVOCATION_X_PTR_ID,
-      TEMP_LOADED_ID,
-      BOUND
-    };
-
-    enum {
-      INPUT = 1,
-      UNIFORM = 2,
-      BUFFER_BLOCK = 3,
-      ARRAY_STRIDE = 6,
-      BUILTIN = 11,
-      BINDING = 33,
-      OFFSET = 35,
-      DESCRIPTOR_SET = 34,
-      GLOBAL_INVOCATION = 28,
-      OP_TYPE_VOID = 19,
-      OP_TYPE_FUNCTION = 33,
-      OP_TYPE_INT = 21,
-      OP_TYPE_VECTOR = 23,
-      OP_TYPE_ARRAY = 28,
-      OP_TYPE_STRUCT = 30,
-      OP_TYPE_POINTER = 32,
-      OP_VARIABLE = 59,
-      OP_DECORATE = 71,
-      OP_MEMBER_DECORATE = 72,
-      OP_FUNCTION = 54,
-      OP_LABEL = 248,
-      OP_ACCESS_CHAIN = 65,
-      OP_CONSTANT = 43,
-      OP_LOAD = 61,
-      OP_STORE = 62,
-      OP_RETURN = 253,
-      OP_FUNCTION_END = 56,
-      OP_CAPABILITY = 17,
-      OP_MEMORY_MODEL = 14,
-      OP_ENTRY_POINT = 15,
-      OP_EXECUTION_MODE = 16,
-      OP_COMPOSITE_EXTRACT = 81,
-    };
-
-    int32_t shader[] = {
-      // first is the SPIR-V header
-      0x07230203, // magic header ID
-      0x00010000, // version 1.0.0
-      0,          // generator (optional)
-      BOUND,      // bound
-      0,          // schema
-
-      // OpCapability Shader
-      (2 << 16) | OP_CAPABILITY, 1, 
-
-      // OpMemoryModel Logical Simple
-      (3 << 16) | OP_MEMORY_MODEL, 0, 0, 
-
-      // OpEntryPoint GLCompute %FUNC_ID "f" %IN_ID %OUT_ID
-      (4 << 16) | OP_ENTRY_POINT, 5, FUNC_ID, 0x00000066,
-
-      // OpExecutionMode %FUNC_ID LocalSize 1 1 1
-      (6 << 16) | OP_EXECUTION_MODE, FUNC_ID, 17, 1, 1, 1,
-
-      // next declare decorations
-
-      (3 << 16) | OP_DECORATE, STRUCT_ID, BUFFER_BLOCK, 
-
-      (4 << 16) | OP_DECORATE, GLOBAL_INVOCATION_ID, BUILTIN, GLOBAL_INVOCATION,
-
-      (4 << 16) | OP_DECORATE, IN_ID, DESCRIPTOR_SET, 0,
-
-      (4 << 16) | OP_DECORATE, IN_ID, BINDING, 0,
-
-      (4 << 16) | OP_DECORATE, OUT_ID, DESCRIPTOR_SET, 0,
-
-      (4 << 16) | OP_DECORATE, OUT_ID, BINDING, 1,
-
-      (4 << 16) | OP_DECORATE, INT_ARRAY_TYPE_ID, ARRAY_STRIDE, 4,
-
-      (5 << 16) | OP_MEMBER_DECORATE, STRUCT_ID, 0, OFFSET, 0,
-
-      // next declare types
-      (2 << 16) | OP_TYPE_VOID, VOID_TYPE_ID,
-
-      (3 << 16) | OP_TYPE_FUNCTION, FUNC_TYPE_ID, VOID_TYPE_ID,
-
-      (4 << 16) | OP_TYPE_INT, INT_TYPE_ID, 32, 1,
-
-      (4 << 16) | OP_CONSTANT, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID, bufferLength,
-
-      (4 << 16) | OP_TYPE_ARRAY, INT_ARRAY_TYPE_ID, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID,
-
-      (3 << 16) | OP_TYPE_STRUCT, STRUCT_ID, INT_ARRAY_TYPE_ID,
-
-      (4 << 16) | OP_TYPE_POINTER, POINTER_TYPE_ID, UNIFORM, STRUCT_ID,
-
-      (4 << 16) | OP_TYPE_POINTER, ELEMENT_POINTER_TYPE_ID, UNIFORM, INT_TYPE_ID,
-
-      (4 << 16) | OP_TYPE_VECTOR, INT_VECTOR_TYPE_ID, INT_TYPE_ID, 3,
-
-      (4 << 16) | OP_TYPE_POINTER, INT_VECTOR_POINTER_TYPE_ID, INPUT, INT_VECTOR_TYPE_ID,
-
-      (4 << 16) | OP_TYPE_POINTER, INT_POINTER_TYPE_ID, INPUT, INT_TYPE_ID,
-
-      // then declare constants
-      (4 << 16) | OP_CONSTANT, INT_TYPE_ID, CONSTANT_ZERO_ID, 0,
-
-      // then declare variables
-      (4 << 16) | OP_VARIABLE, POINTER_TYPE_ID, IN_ID, UNIFORM,
-
-      (4 << 16) | OP_VARIABLE, POINTER_TYPE_ID, OUT_ID, UNIFORM,
-
-      (4 << 16) | OP_VARIABLE, INT_VECTOR_POINTER_TYPE_ID, GLOBAL_INVOCATION_ID, INPUT,
-
-      // then declare function
-      (5 << 16) | OP_FUNCTION, VOID_TYPE_ID, FUNC_ID, 0, FUNC_TYPE_ID,
-
-      (2 << 16) | OP_LABEL, LABEL_ID,
-
-      (5 << 16) | OP_ACCESS_CHAIN, INT_POINTER_TYPE_ID, GLOBAL_INVOCATION_X_PTR_ID, GLOBAL_INVOCATION_ID, CONSTANT_ZERO_ID,
-
-      (4 << 16) | OP_LOAD, INT_TYPE_ID, GLOBAL_INVOCATION_X_ID, GLOBAL_INVOCATION_X_PTR_ID,
-
-      (6 << 16) | OP_ACCESS_CHAIN, ELEMENT_POINTER_TYPE_ID, IN_ELEMENT_ID, IN_ID, CONSTANT_ZERO_ID, GLOBAL_INVOCATION_X_ID,
-
-      (4 << 16) | OP_LOAD, INT_TYPE_ID, TEMP_LOADED_ID, IN_ELEMENT_ID,
-
-      (6 << 16) | OP_ACCESS_CHAIN, ELEMENT_POINTER_TYPE_ID, OUT_ELEMENT_ID, OUT_ID, CONSTANT_ZERO_ID, GLOBAL_INVOCATION_X_ID,
-
-      (3 << 16) | OP_STORE, OUT_ELEMENT_ID, TEMP_LOADED_ID,
-
-      (1 << 16) | OP_RETURN,
-
-      (1 << 16) | OP_FUNCTION_END,
-    };
-
-    VkShaderModuleCreateInfo shaderModuleCreateInfo = {
-      VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      0,
-      0,
-      sizeof(shader),
-      shader
-    };
-
-    VkShaderModule shader_module;
-
-    const VkResult res = vkCreateShaderModule(devi, &shaderModuleCreateInfo, 0, &shader_module);
-    CHECK_VK(res);
-
-    return shader_module;
 }
 
 #pragma mark Main
@@ -309,7 +134,8 @@ int main(int argc, char* argv[])
 	// Check instance layers
 	uint32_t layerCount=16;
 	VkLayerProperties layerProps[layerCount];
-	vkEnumerateInstanceLayerProperties(&layerCount, layerProps);
+	const VkResult res_eilp = vkEnumerateInstanceLayerProperties(&layerCount, layerProps);
+	CHECK_VK(res_eilp);
 
 	int foundLayer0 = 0;
 	int foundLayer1 = 0;
@@ -335,12 +161,13 @@ int main(int argc, char* argv[])
 	// Check the extensions
 	uint32_t extCount = 32;
 	VkExtensionProperties extProps[extCount];
-	const VkResult reseisp = vkEnumerateInstanceExtensionProperties
+	const VkResult res_eisp = vkEnumerateInstanceExtensionProperties
 	(
 	 	0,		// layer to retrieve extensions from
 		&extCount,
 		extProps
 	);
+	CHECK_VK(res_eisp);
 	int foundExt = 0;
 	for (uint32_t i=0; i<extCount; ++i)
 	{
@@ -511,7 +338,8 @@ int main(int argc, char* argv[])
 	VkDeviceMemory memsrc;
 	mk_buffer
 	(
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		//VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		bufsz,
 		&bufsrc,
@@ -541,18 +369,7 @@ int main(int argc, char* argv[])
 		(void**) &datasrc
 	);
 	CHECK_VK(resmap0);
-	// Map the dst memory
-	void* datadst = 0;
-	const VkResult resmap1 = vkMapMemory
-	(
-		devi,
-		memdst,
-		0,
-		bufsz,
-		0,
-		(void**) &datadst
-	);
-	CHECK_VK(resmap1);
+
 
 	// Write the data
 	memset(datasrc, 0x55, bufsz);
@@ -667,7 +484,7 @@ int main(int argc, char* argv[])
 		0				// basePipelineIndex
 	};
 	VkPipeline pipeline;
-	const VkResult resccp = vkCreateComputePipelines
+	const VkResult res_cp = vkCreateComputePipelines
 	(
 		devi,
 		0,				// pipeline cache
@@ -676,7 +493,174 @@ int main(int argc, char* argv[])
 		0,				// allocator
 		&pipeline
 	);
-	CHECK_VK(resccp);
+	CHECK_VK(res_cp);
+
+	// Descriptor pool
+	const VkDescriptorPoolSize descriptorPoolSize = 
+	{
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		2
+	};
+	const VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = 
+	{
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		0,				// next
+		0,				// flags
+		1,				// max sets
+		1,				// pool size count
+		&descriptorPoolSize		// pool sizes
+	};
+	VkDescriptorPool descriptorPool;
+	VkResult rescdp = vkCreateDescriptorPool
+	(
+		devi,
+		&descriptorPoolCreateInfo,
+		0,				// allocator
+		&descriptorPool
+	);
+	CHECK_VK(rescdp);
+
+	// Descriptor set
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = 
+	{
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		0,				// next
+		descriptorPool,			// descriptor pool to allocate from
+		1,				// descriptor set count
+		&descriptorSetLayout		// descriptor set layouts
+	};
+	VkDescriptorSet descriptorSet;
+	const VkResult resads = vkAllocateDescriptorSets(devi, &descriptorSetAllocateInfo, &descriptorSet);
+	CHECK_VK(resads);
+
+	const VkDescriptorBufferInfo dbi_src =
+	{
+		bufsrc,
+		0,
+		VK_WHOLE_SIZE
+	};
+	const VkDescriptorBufferInfo dbi_dst =
+	{
+		bufdst,
+		0,
+		VK_WHOLE_SIZE
+	};
+
+	VkWriteDescriptorSet dset[2] =
+	{
+		{
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			descriptorSet,
+			0,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&dbi_src,
+			0
+		},
+		{
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			descriptorSet,
+			1,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&dbi_dst,
+			0
+		}
+	};
+	vkUpdateDescriptorSets(devi, 2, dset, 0, 0);
+
+	// Command pool
+	const VkCommandPoolCreateInfo commandPoolCreateInfo =
+	{
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+		0,				// next
+		0,				// flags
+		fam				// queue fam
+	};
+	VkCommandPool commandPool;
+	const VkResult res_ccp = vkCreateCommandPool(devi, &commandPoolCreateInfo, 0, &commandPool);
+	CHECK_VK(res_ccp);
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo =
+	{
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		0,
+		commandPool,
+		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		1
+	};
+
+	// Command buffer
+	VkCommandBuffer commandBuffer;
+	const VkResult res_acc = vkAllocateCommandBuffers(devi, &commandBufferAllocateInfo, &commandBuffer);
+	CHECK_VK(res_acc);
+
+	// Record it
+	VkCommandBufferBeginInfo commandBufferBeginInfo =
+  	{
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		0,
+		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		0
+	};
+
+	const VkResult res_bcb = vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+	CHECK_VK(res_bcb);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSet, 0, 0);
+
+	vkCmdDispatch(commandBuffer, bufsz / sizeof(uint32_t), 1, 1);
+
+	const VkResult res_ecb = vkEndCommandBuffer(commandBuffer);
+	CHECK_VK(res_ecb);
+
+	VkQueue queue;
+	vkGetDeviceQueue(devi, fam, 0, &queue);
+
+	VkSubmitInfo submitInfo =
+	{
+		VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		0,
+		0,
+		0,
+		0,
+		1,
+		&commandBuffer,
+		0,
+		0
+	};
+	const VkResult res_qs = vkQueueSubmit(queue, 1, &submitInfo, 0);
+	CHECK_VK(res_qs);
+
+	const VkResult res_qwi = vkQueueWaitIdle(queue);
+	CHECK_VK(res_qwi);
+
+	// Map the dst memory
+	uint32_t* datadst = 0;
+	const VkResult resmap1 = vkMapMemory
+	(
+		devi,
+		memdst,
+		0,
+		bufsz,
+		0,
+		(void**) &datadst
+	);
+	CHECK_VK(resmap1);
+
+	fprintf(stderr, "Checking results...\n");
+	for (uint32_t i=0; i<bufsz/4; ++i)
+		assert(datadst[i] == 0xaaaaaaaa);
+	fprintf(stderr, "Results are correct.\n");
+
+	vkUnmapMemory(devi, memdst);
 
 	return 0;
 }
