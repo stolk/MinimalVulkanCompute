@@ -116,7 +116,7 @@ static VkShaderModule mk_shader(const char* spirv_fname)
 		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 		0,
 		0,
-		shader_sz,
+		shader_sz * sizeof(uint32_t),
 		shader
 	};
 	VkShaderModule shader_module;
@@ -306,6 +306,52 @@ int main(int argc, char* argv[])
 {
 	(void) argc;
 	(void) argv;
+	// Check instance layers
+	uint32_t layerCount=16;
+	VkLayerProperties layerProps[layerCount];
+	vkEnumerateInstanceLayerProperties(&layerCount, layerProps);
+
+	int foundLayer0 = 0;
+	int foundLayer1 = 0;
+	for (uint32_t i=0; i<layerCount; ++i)
+	{
+		VkLayerProperties prop = layerProps[i];
+		//fprintf(stderr,"layer: %s\n", prop.layerName);
+		if (strcmp("VK_LAYER_LUNARG_standard_validation", prop.layerName) == 0)
+		{
+			foundLayer0 = 1;
+			break;
+		}
+		if (strcmp("VK_LAYER_KHRONOS_validation", prop.layerName) == 0) 
+		{
+			foundLayer1 = 1;
+			break;
+		}
+	}
+	const char* layerName = foundLayer1 ? 
+		"VK_LAYER_KHRONOS_validation" :
+		"VK_LAYER_LUNARG_standard_validation";
+
+	// Check the extensions
+	uint32_t extCount = 32;
+	VkExtensionProperties extProps[extCount];
+	const VkResult reseisp = vkEnumerateInstanceExtensionProperties
+	(
+	 	0,		// layer to retrieve extensions from
+		&extCount,
+		extProps
+	);
+	int foundExt = 0;
+	for (uint32_t i=0; i<extCount; ++i)
+	{
+		const char* ename = extProps[i].extensionName;
+		//fprintf(stderr,"Extension %s\n", ename);
+		if (!strcmp(ename, "VK_EXT_debug_report"))
+			foundExt = 1;
+	}
+	assert(foundExt);
+	const char* extName = "VK_EXT_debug_report";
+
 	// Get an instance
 	const VkApplicationInfo ai =
 	{
@@ -320,13 +366,13 @@ int main(int argc, char* argv[])
 	const VkInstanceCreateInfo ici =
 	{
 		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-		0,
-		0,
-		&ai,
-		0,
-		0,
-		0,
-		0
+		0,			// next
+		0,			// flags
+		&ai,			// application info
+		1,			// enabled layer count
+		&layerName,		// enabled layer names
+		1,			// enabled extension count
+		&extName		// enabled extension names
 	};
 	const VkResult res_ci = vkCreateInstance
 	(
@@ -552,15 +598,15 @@ int main(int argc, char* argv[])
 	CHECK_VK(resbind1);
 
 	// Make a shader module
-	//VkShaderModule shader_module = mk_shader("foo.spirv");
-	VkShaderModule shader_module = mk_shader2();
+	VkShaderModule shader_module = mk_shader("foo.spirv");
+	//VkShaderModule shader_module = mk_shader2();
 
 	// Make a descriptor set
 	const VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2] = 
 	{
 		{
 			0,					// binding number
-			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	// descriptor type
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,	// descriptor type
 			1,					// descriptor count
 			VK_SHADER_STAGE_COMPUTE_BIT,		// stage flags
 			0					// immutable samplers
@@ -607,6 +653,7 @@ int main(int argc, char* argv[])
 		VK_SHADER_STAGE_COMPUTE_BIT,	// stage
 		shader_module,			// module
 		"foo",				// name of entry point
+//		"f",				// name of entry point
 		0				// specialization info
 	};
 	VkComputePipelineCreateInfo computePipelineCreateInfo =
