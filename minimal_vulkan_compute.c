@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
 	vkGetPhysicalDeviceMemoryProperties(pdev, &memprops);
 	mtcnt = memprops.memoryTypeCount;
 	mhcnt = memprops.memoryHeapCount;
-	fprintf(stderr, "%d mem types. %d mem heaps.\n", mtcnt, mhcnt);
+	fprintf(stderr, "%d mem types (%d mem heaps)\n", mtcnt, mhcnt);
 	for (uint32_t mt=0; mt<mtcnt; ++mt)
 	{
 		const uint32_t hidx = memprops.memoryTypes[mt].heapIndex;
@@ -322,7 +322,7 @@ int main(int argc, char* argv[])
 		fprintf
 		(
 			stderr,
-			"%zu MiB of %s memory [ %s%s%s%s]\n",
+			"%7zu MiB of %s memory [ %s%s%s%s]\n",
 			sz / (1024*1024),
 			mhf & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT ? "local" : "non-local",
 			fl & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ? "device-local " : "",
@@ -423,7 +423,11 @@ int main(int argc, char* argv[])
 	{
 		{
 			0,					// binding number
+#if 1
 			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,	// descriptor type
+#else
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,	// descriptor type
+#endif
 			1,					// descriptor count
 			VK_SHADER_STAGE_COMPUTE_BIT,		// stage flags
 			0					// immutable samplers
@@ -470,7 +474,6 @@ int main(int argc, char* argv[])
 		VK_SHADER_STAGE_COMPUTE_BIT,	// stage
 		shader_module,			// module
 		"foo",				// name of entry point
-//		"f",				// name of entry point
 		0				// specialization info
 	};
 	VkComputePipelineCreateInfo computePipelineCreateInfo =
