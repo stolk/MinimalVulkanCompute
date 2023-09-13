@@ -16,6 +16,7 @@
 static VkInstance inst;					// A Vulkan instance.
 static VkPhysicalDevice pdev;				// A physical device.
 static VkDevice devi;					// A device.
+static int qfam = -1;					// queue family index.
 
 static uint32_t mtcnt;					// Memory type count
 static uint32_t mhcnt;					// Memory heap count
@@ -125,12 +126,10 @@ static VkShaderModule mk_shader(const char* spirv_fname)
 	return shader_module;
 }
 
-#pragma mark Main
+#pragma mark Device selection
 
-int main(int argc, char* argv[])
+static void pick_device(void)
 {
-	(void) argc;
-	(void) argv;
 	// Check instance layers
 	uint32_t layerCount=16;
 	VkLayerProperties layerProps[layerCount];
@@ -216,7 +215,7 @@ int main(int argc, char* argv[])
 	const VkResult res_enum = vkEnumeratePhysicalDevices(inst, &dev_count, devices);
 	CHECK_VK(res_enum);
 	fprintf(stderr, "Found %d physical devices.\n", dev_count);
-	if (!dev_count) return -1;
+	if (!dev_count) exit(2);
 	const char* devtypenames[] =
 	{
 		"OTHER",
@@ -265,15 +264,14 @@ int main(int argc, char* argv[])
 	uint32_t fam_count = 16;
 	VkQueueFamilyProperties famprops[fam_count];
 	vkGetPhysicalDeviceQueueFamilyProperties(pdev, &fam_count, famprops);
-	int fam = -1;
 	for (uint32_t fa=0; fa<fam_count; ++fa)
 		if (famprops[fa].queueFlags & VK_QUEUE_COMPUTE_BIT )
 			if (famprops[fa].queueFlags & VK_QUEUE_TRANSFER_BIT)
 			{
-				fam = fa;
+				qfam = fa;
 				break;
 			}
-	assert(fam>=0);
+	assert(qfam>=0);
 
 	// Create a device
 	const float queue_prio = 1.0f;
@@ -282,7 +280,7 @@ int main(int argc, char* argv[])
 		VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 		0,					// next
 		0,					// flags
-		fam,					// family idx
+		qfam,					// family idx
 		1,					// queue count
 		&queue_prio				// priority 0..1
 	};
@@ -307,6 +305,16 @@ int main(int argc, char* argv[])
 		&devi
 	);
 	CHECK_VK(res_cd);
+}
+
+#pragma mark Main
+
+int main(int argc, char* argv[])
+{
+	(void) argc;
+	(void) argv;
+
+	pick_device();
 
 	// Examine the memory types.
 	vkGetPhysicalDeviceMemoryProperties(pdev, &memprops);
@@ -584,7 +592,7 @@ int main(int argc, char* argv[])
 		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		0,				// next
 		0,				// flags
-		fam				// queue fam
+		qfam				// queue fam
 	};
 	VkCommandPool commandPool;
 	const VkResult res_ccp = vkCreateCommandPool(devi, &commandPoolCreateInfo, 0, &commandPool);
@@ -625,7 +633,7 @@ int main(int argc, char* argv[])
 	CHECK_VK(res_ecb);
 
 	VkQueue queue;
-	vkGetDeviceQueue(devi, fam, 0, &queue);
+	vkGetDeviceQueue(devi, qfam, 0, &queue);
 
 	VkSubmitInfo submitInfo =
 	{
