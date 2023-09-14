@@ -468,6 +468,13 @@ int main(int argc, char* argv[])
 	const VkResult rescdsl = vkCreateDescriptorSetLayout(devi, &descriptorSetLayoutCreateInfo, 0, &descriptorSetLayout);
 	CHECK_VK(rescdsl);
 
+	const VkPushConstantRange pcr =
+	{
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0,				// offset
+		sizeof(uint32_t)
+	};
+
 	// Create pipeline
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo =
 	{
@@ -476,8 +483,8 @@ int main(int argc, char* argv[])
 		0,				// flags
 		1,				// layout count
 		&descriptorSetLayout,		// layouts
-		0,				// pushConstantRangeCount
-		0				// pushConstantRanges
+		1,				// pushConstantRangeCount
+		&pcr				// pushConstantRanges
 	};
 	VkPipelineLayout pipelineLayout;
 	const VkResult rescpl = vkCreatePipelineLayout(devi, &pipelineLayoutCreateInfo, 0, &pipelineLayout);
@@ -635,6 +642,18 @@ int main(int argc, char* argv[])
 
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSet, 0, 0);
 
+	// Push the constant arg.
+	uint32_t msk = 0xff0000ff;
+	vkCmdPushConstants
+	(
+		commandBuffer,
+		pipelineLayout,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0,
+		sizeof(uint32_t),
+		&msk
+	);
+
 	vkCmdDispatch(commandBuffer, bufsz / sizeof(uint32_t), 1, 1);
 
 	const VkResult res_ecb = vkEndCommandBuffer(commandBuffer);
@@ -676,7 +695,7 @@ int main(int argc, char* argv[])
 
 	fprintf(stderr, "Checking results...\n");
 	for (uint32_t i=0; i<bufsz/4; ++i)
-		assert(datadst[i] == 0xaaaaaaaa);
+		assert(datadst[i] == 0xaa5555aa);
 	fprintf(stderr, "Results are correct.\n");
 
 	vkUnmapMemory(devi, memdst);
