@@ -307,15 +307,11 @@ static void pick_device(void)
 	CHECK_VK(res_cd);
 }
 
-#pragma mark Main
 
-int main(int argc, char* argv[])
+#pragma mark memory types
+
+static void list_memory_types(void)
 {
-	(void) argc;
-	(void) argv;
-
-	pick_device();
-
 	// Examine the memory types.
 	vkGetPhysicalDeviceMemoryProperties(pdev, &memprops);
 	mtcnt = memprops.memoryTypeCount;
@@ -339,9 +335,21 @@ int main(int argc, char* argv[])
 			fl & VK_MEMORY_PROPERTY_HOST_CACHED_BIT ? "host-cached " : ""
 		);
 	}
+}
+
+#pragma mark Main
+
+int main(int argc, char* argv[])
+{
+	(void) argc;
+	(void) argv;
+
+	pick_device();
+
+	list_memory_types();
 
 	// Create a buffer for constant data
-	const VkDeviceSize bufsz = 50*1024;
+	const VkDeviceSize bufsz = 12*1024;
 	VkBuffer bufsrc;
 	VkDeviceMemory memsrc;
 	mk_buffer
