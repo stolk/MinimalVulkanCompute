@@ -1,6 +1,6 @@
 CLSPV = ${HOME}/src/clspv/build/bin/clspv
 
-CLSPVFLAGS = --constant-args-ubo --max-ubo-size=65536
+CLSPVFLAGS = --constant-args-ubo --max-ubo-size=65536 --fp16
 
 CFLAGS = -Wextra -g
 
