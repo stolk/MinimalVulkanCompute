@@ -601,6 +601,26 @@ int main(int argc, char* argv[])
 	};
 	vkUpdateDescriptorSets(devi, 2, dset, 0, 0);
 
+	// query pool
+	const VkQueryPoolCreateInfo qpci =
+	{
+		VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+		0,				// pNext
+		0,				// flags
+		VK_QUERY_TYPE_TIMESTAMP,	// query type
+		2,				// query count
+		0,				// pipeline statistics
+	};
+	VkQueryPool queryPool;
+	const VkResult res_cqp = vkCreateQueryPool
+	(
+	 	devi,
+		&qpci,
+		0,
+		&queryPool
+	);
+	CHECK_VK(res_cqp);
+
 	// Command pool
 	const VkCommandPoolCreateInfo commandPoolCreateInfo =
 	{
@@ -654,7 +674,29 @@ int main(int argc, char* argv[])
 		&msk
 	);
 
+	vkCmdResetQueryPool
+	(
+		commandBuffer,
+	 	queryPool,
+		0,
+		2
+	);
+
+	vkCmdWriteTimestamp
+	(
+	 	commandBuffer,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		queryPool,
+		0
+	);
 	vkCmdDispatch(commandBuffer, bufsz / sizeof(uint32_t), 1, 1);
+	vkCmdWriteTimestamp
+	(
+	 	commandBuffer,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		queryPool,
+		1
+	);
 
 	const VkResult res_ecb = vkEndCommandBuffer(commandBuffer);
 	CHECK_VK(res_ecb);
@@ -695,10 +737,31 @@ int main(int argc, char* argv[])
 
 	fprintf(stderr, "Checking results...\n");
 	for (uint32_t i=0; i<bufsz/4; ++i)
-		assert(datadst[i] == 0xaa5555aa);
+		assert(datadst[i] == 0xaaaaaaaa);
 	fprintf(stderr, "Results are correct.\n");
 
 	vkUnmapMemory(devi, memdst);
+
+	uint64_t stamps[2];
+	const VkQueryResultFlags qrflags =
+		  VK_QUERY_RESULT_64_BIT
+		| VK_QUERY_RESULT_WAIT_BIT
+		;
+	const VkResult res_qpr = vkGetQueryPoolResults
+	(
+	 	devi,
+		queryPool,
+		0,
+		2,
+		sizeof(stamps),
+		stamps,
+		sizeof(uint64_t),
+		qrflags
+	);
+	CHECK_VK(res_qpr);
+	fprintf(stderr,"start: %lu\n", stamps[0]);
+	fprintf(stderr,"end:   %lu\n", stamps[1]);
+	fprintf(stderr,"elaps: %lu\n", stamps[1] - stamps[0]);
 
 	return 0;
 }
