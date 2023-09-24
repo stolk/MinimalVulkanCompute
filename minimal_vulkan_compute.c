@@ -15,6 +15,7 @@
 
 static VkInstance inst;					// A Vulkan instance.
 static VkPhysicalDevice pdev;				// A physical device.
+static VkPhysicalDeviceProperties dprops;		// The properties of the picked device.
 static VkDevice devi;					// A device.
 static int qfam = -1;					// queue family index.
 
@@ -259,6 +260,7 @@ static void pick_device(void)
 		selnr = 0;
 	fprintf(stderr, "Using %s\n", devprops[selnr].deviceName);
 	pdev = devices[selnr];
+	dprops = devprops[selnr];
 
 	// Find queue fam.
 	uint32_t fam_count = 16;
@@ -736,7 +738,7 @@ int main(int argc, char* argv[])
 
 	fprintf(stderr, "Checking results...\n");
 	for (uint32_t i=0; i<bufsz/4; ++i)
-		assert(datadst[i] == 0xaaaaaaaa);
+		assert(datadst[i] == 0xaa5555aa);
 	fprintf(stderr, "Results are correct.\n");
 
 	vkUnmapMemory(devi, memdst);
@@ -758,9 +760,12 @@ int main(int argc, char* argv[])
 		qrflags
 	);
 	CHECK_VK(res_qpr);
-	fprintf(stderr,"start: %lu\n", stamps[0]);
-	fprintf(stderr,"end:   %lu\n", stamps[1]);
-	fprintf(stderr,"elaps: %lu\n", stamps[1] - stamps[0]);
+	const float period = dprops.limits.timestampPeriod;
+	fprintf(stderr, "timestamp ticks per ns: %f\n", period);
+	const uint64_t elapsed = stamps[1] - stamps[0];
+	const float elapsed_ns = elapsed / period;
+	fprintf(stderr,"elapsed: %lu\n", elapsed);
+	fprintf(stderr,"elapsed: %.1f ns\n", elapsed_ns);
 
 	return 0;
 }
