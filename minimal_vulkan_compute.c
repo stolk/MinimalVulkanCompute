@@ -432,7 +432,6 @@ int main(int argc, char* argv[])
 
 	// Make a shader module
 	VkShaderModule shader_module = mk_shader("foo.spirv");
-	//VkShaderModule shader_module = mk_shader2();
 
 	// Make a descriptor set
 	const VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2] = 
