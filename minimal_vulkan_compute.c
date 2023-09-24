@@ -761,9 +761,9 @@ int main(int argc, char* argv[])
 	);
 	CHECK_VK(res_qpr);
 	const float period = dprops.limits.timestampPeriod;
-	fprintf(stderr, "timestamp ticks per ns: %f\n", period);
+	fprintf(stderr, "ns per timestamp tick: %f\n", period);
 	const uint64_t elapsed = stamps[1] - stamps[0];
-	const float elapsed_ns = elapsed / period;
+	const float elapsed_ns = elapsed * period;
 	fprintf(stderr,"elapsed: %lu\n", elapsed);
 	fprintf(stderr,"elapsed: %.1f ns\n", elapsed_ns);
 
