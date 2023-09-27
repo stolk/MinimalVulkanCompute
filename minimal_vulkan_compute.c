@@ -351,7 +351,7 @@ int main(int argc, char* argv[])
 	list_memory_types();
 
 	// Create a buffer for constant data
-	const VkDeviceSize bufsz = 12*1024;
+	const VkDeviceSize bufsz = 1024*1024;
 	VkBuffer bufsrc;
 	VkDeviceMemory memsrc;
 	mk_buffer
@@ -690,7 +690,9 @@ int main(int argc, char* argv[])
 		queryPool,
 		0
 	);
-	vkCmdDispatch(commandBuffer, bufsz / sizeof(uint32_t), 1, 1);
+	const size_t numwork = bufsz / sizeof(uint32_t);
+	const size_t numgroups = numwork / WGSZ;
+	vkCmdDispatch(commandBuffer, numgroups, 1, 1);
 	vkCmdWriteTimestamp
 	(
 	 	commandBuffer,
