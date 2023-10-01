@@ -213,6 +213,8 @@ static void pick_device(void)
 	uint32_t dev_count = 64;
 	VkPhysicalDevice devices[dev_count];
 	VkPhysicalDeviceProperties devprops[dev_count];
+	VkPhysicalDeviceFeatures2 devfeats[dev_count];
+	VkPhysicalDeviceVulkan12Features v12feats[dev_count];
 	const VkResult res_enum = vkEnumeratePhysicalDevices(inst, &dev_count, devices);
 	CHECK_VK(res_enum);
 	fprintf(stderr, "Found %d physical devices.\n", dev_count);
@@ -237,7 +239,16 @@ static void pick_device(void)
 		num_dgpu += (devprops[dnr].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
 		num_cpu  += (devprops[dnr].deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU);
 		const char* tnam = devtypenames[devprops[dnr].deviceType];
-		fprintf(stderr,"%04x:%04x %s %s\n", devprops[dnr].vendorID, devprops[dnr].deviceID, tnam, devprops[dnr].deviceName);
+                v12feats[dnr].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                v12feats[dnr].pNext = 0;
+                devfeats[dnr].sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                devfeats[dnr].pNext = v12feats+dnr;
+                vkGetPhysicalDeviceFeatures2(devices[dnr], devfeats+dnr);
+                assert(devfeats[dnr].sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2);
+                const int has_i8  = v12feats[dnr].shaderInt8;
+                const int has_f16 = v12feats[dnr].shaderFloat16;
+                fprintf(stderr,"%4s %-44s (i8:%c f16:%c)\n", tnam, devprops[dnr].deviceName, has_i8?'Y':'N', has_f16?'Y':'N');
+
 	}
 
 	int selnr = -1;
