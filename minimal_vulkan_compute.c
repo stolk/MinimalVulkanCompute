@@ -23,6 +23,11 @@ static uint32_t mtcnt;					// Memory type count
 static uint32_t mhcnt;					// Memory heap count
 static VkPhysicalDeviceMemoryProperties memprops;	// Properties for all memory types
 
+// Extension func.
+static PFN_vkSetDebugUtilsObjectNameEXT	pfnSetDebugUtilsObjectNameEXT;
+
+
+
 #pragma mark Buffer creation
 
 // Create a buffer for specified usage, and with specified properties.
@@ -32,7 +37,8 @@ void mk_buffer
 	VkMemoryPropertyFlags propFlags,		// Local? Host Visible? Cached? etc.
 	VkDeviceSize sz,				// Size of the buffer.
 	VkBuffer* buff,					// Out: buffer
-	VkDeviceMemory* devmem				// Out: memory
+	VkDeviceMemory* devmem,				// Out: memory
+	const char* tag					// Debug name
 )
 {
 	// Create the buffer.
@@ -96,6 +102,29 @@ void mk_buffer
 		devmem
 	);
 	CHECK_VK(res_alloc);
+
+	// Tag it
+	if (pfnSetDebugUtilsObjectNameEXT)
+	{
+		const uint64_t ids[2] = { (uint64_t)*devmem, (uint64_t)*buff };
+		for (int i=0; i<2; ++i)
+		{
+			const VkDebugUtilsObjectNameInfoEXT ni =
+			{
+				VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+				0,
+				i==0 ? VK_OBJECT_TYPE_DEVICE_MEMORY : VK_OBJECT_TYPE_BUFFER,
+				ids[i],
+				tag
+			};
+			const VkResult res_name = pfnSetDebugUtilsObjectNameEXT
+			(
+				devi,
+				&ni
+			);
+			CHECK_VK(res_name);			
+		}
+	}
 }
 
 #pragma mark Shader module
@@ -177,7 +206,11 @@ static void pick_device(void)
 			foundExt = 1;
 	}
 	assert(foundExt);
-	const char* extName = "VK_EXT_debug_report";
+	const char* extNames[2] =
+	{
+		"VK_EXT_debug_report",
+		"VK_EXT_debug_utils",
+	};
 
 	// Get an instance
 	const VkApplicationInfo ai =
@@ -198,8 +231,8 @@ static void pick_device(void)
 		&ai,			// application info
 		1,			// enabled layer count
 		&layerName,		// enabled layer names
-		1,			// enabled extension count
-		&extName		// enabled extension names
+		2,			// enabled extension count
+		extNames		// enabled extension names
 	};
 	const VkResult res_ci = vkCreateInstance
 	(
@@ -318,6 +351,11 @@ static void pick_device(void)
 		&devi
 	);
 	CHECK_VK(res_cd);
+	pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr
+	(
+		inst,
+		"vkSetDebugUtilsObjectNameEXT"
+	);
 }
 
 
@@ -372,7 +410,8 @@ int main(int argc, char* argv[])
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		bufsz,
 		&bufsrc,
-		&memsrc
+		&memsrc,
+		"src"
 	);
 	// Create a buffer for dest data
 	VkBuffer bufdst;
@@ -383,7 +422,8 @@ int main(int argc, char* argv[])
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		bufsz,
 		&bufdst,
-		&memdst
+		&memdst,
+		"dst"
 	);
 
 	// Map the src memory
@@ -779,6 +819,20 @@ int main(int argc, char* argv[])
 	const float elapsed_ns = elapsed * period;
 	fprintf(stderr,"elapsed: %lu\n", elapsed);
 	fprintf(stderr,"elapsed: %.1f ns\n", elapsed_ns);
+
+	vkDestroyQueryPool(devi, queryPool, 0);
+	vkDestroyDescriptorPool(devi, descriptorPool, 0);
+	vkDestroyDescriptorSetLayout(devi, descriptorSetLayout, 0);
+	vkDestroyPipelineLayout(devi, pipelineLayout, 0);
+	vkDestroyPipeline(devi, pipeline, 0);
+	vkDestroyCommandPool(devi, commandPool, 0);
+	vkDestroyShaderModule(devi, shader_module, 0);
+	vkDestroyBuffer(devi, bufsrc, 0);
+	vkDestroyBuffer(devi, bufdst, 0);
+	vkFreeMemory(devi, memsrc, 0);
+	vkFreeMemory(devi, memdst, 0);
+	vkDestroyDevice(devi, 0);
+	vkDestroyInstance(inst, 0);
 
 	return 0;
 }
