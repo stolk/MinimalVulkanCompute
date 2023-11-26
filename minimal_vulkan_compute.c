@@ -12,6 +12,26 @@
 		assert(RES == VK_SUCCESS); \
 	}
 
+#define LABEL_OBJ(O, TYP, NAM) \
+	if (pfnSetDebugUtilsObjectNameEXT) \
+	{ \
+		const VkDebugUtilsObjectNameInfoEXT ni = \
+		{ \
+			VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, \
+			0, \
+			TYP, \
+			(uint64_t) O, \
+			NAM \
+		}; \
+		const VkResult res_name = pfnSetDebugUtilsObjectNameEXT \
+		( \
+			devi, \
+			&ni \
+		); \
+		CHECK_VK(res_name); \
+	}
+
+
 
 static VkInstance inst;					// A Vulkan instance.
 static VkPhysicalDevice pdev;				// A physical device.
@@ -103,28 +123,8 @@ void mk_buffer
 	);
 	CHECK_VK(res_alloc);
 
-	// Tag it
-	if (pfnSetDebugUtilsObjectNameEXT)
-	{
-		const uint64_t ids[2] = { (uint64_t)*devmem, (uint64_t)*buff };
-		for (int i=0; i<2; ++i)
-		{
-			const VkDebugUtilsObjectNameInfoEXT ni =
-			{
-				VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-				0,
-				i==0 ? VK_OBJECT_TYPE_DEVICE_MEMORY : VK_OBJECT_TYPE_BUFFER,
-				ids[i],
-				tag
-			};
-			const VkResult res_name = pfnSetDebugUtilsObjectNameEXT
-			(
-				devi,
-				&ni
-			);
-			CHECK_VK(res_name);			
-		}
-	}
+	LABEL_OBJ(*devmem, VK_OBJECT_TYPE_DEVICE_MEMORY, tag);
+	LABEL_OBJ(*buff,   VK_OBJECT_TYPE_BUFFER,        tag);
 }
 
 #pragma mark Shader module
@@ -485,6 +485,7 @@ int main(int argc, char* argv[])
 
 	// Make a shader module
 	VkShaderModule shader_module = mk_shader("foo.spirv");
+	LABEL_OBJ(shader_module, VK_OBJECT_TYPE_SHADER_MODULE, "foo.spirv");
 
 	// Make a descriptor set
 	const VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2] = 
@@ -519,6 +520,7 @@ int main(int argc, char* argv[])
 	};
 	const VkResult rescdsl = vkCreateDescriptorSetLayout(devi, &descriptorSetLayoutCreateInfo, 0, &descriptorSetLayout);
 	CHECK_VK(rescdsl);
+	LABEL_OBJ(descriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "foo.spirv");
 
 	const VkPushConstantRange pcr =
 	{
@@ -541,6 +543,8 @@ int main(int argc, char* argv[])
 	VkPipelineLayout pipelineLayout;
 	const VkResult rescpl = vkCreatePipelineLayout(devi, &pipelineLayoutCreateInfo, 0, &pipelineLayout);
 	CHECK_VK(rescpl);
+	LABEL_OBJ(pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "foo.spirv");
+
 	const VkPipelineShaderStageCreateInfo pssci =
 	{
 		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -572,6 +576,7 @@ int main(int argc, char* argv[])
 		&pipeline
 	);
 	CHECK_VK(res_cp);
+	LABEL_OBJ(pipeline, VK_OBJECT_TYPE_PIPELINE, "foo.spirv");
 
 	// Descriptor pool
 	const VkDescriptorPoolSize descriptorPoolSize = 
