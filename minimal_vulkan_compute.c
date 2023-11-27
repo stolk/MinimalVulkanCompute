@@ -302,7 +302,8 @@ static void pick_device(void)
 			if (devprops[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) { selnr=i; break; }
 	if (selnr<0)
 		selnr = 0;
-	fprintf(stderr, "Using %s\n", devprops[selnr].deviceName);
+	const char* device_name = devprops[selnr].deviceName;
+	fprintf(stderr, "Using %s\n", device_name);
 	pdev = devices[selnr];
 	dprops = devprops[selnr];
 
@@ -356,6 +357,7 @@ static void pick_device(void)
 		inst,
 		"vkSetDebugUtilsObjectNameEXT"
 	);
+	LABEL_OBJ(devi, VK_OBJECT_TYPE_DEVICE, device_name);
 }
 
 
